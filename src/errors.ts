@@ -82,6 +82,15 @@ export class InvalidKeyError extends CryptoError {
 }
 
 /**
+ * Thrown when an unsupported version of an encoded object is detected.
+ */
+export class UnsupportedVersionError extends CryptoError {
+  constructor(version: number | string, supported: number | string) {
+    super(`Unsupported version: ${version}. Supported version is ${supported}.`);
+  }
+}
+
+/**
  * Thrown when an empty Uint8Array is provided where data was expected.
  */
 export class EmptyDataError extends CryptoError {

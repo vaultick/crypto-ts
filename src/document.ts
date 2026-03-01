@@ -2,7 +2,9 @@ import { EncryptionFactory } from './encryption/encryption';
 import { Key } from './key';
 import { EncodingFactory } from './encoding/encoding';
 import { RandomnessFactory } from './randomness/randomness';
-import { EmptyDataError } from './errors';
+import { EmptyDataError, UnsupportedVersionError } from './errors';
+
+const DOCUMENT_VERSION = 1;
 
 export interface DocumentMetadata {
   iv: Uint8Array;
@@ -48,6 +50,7 @@ export class Document {
   encode(encodingProvider = 'base64'): string {
     const encoding = EncodingFactory.getProvider(encodingProvider);
     const data = {
+      v: DOCUMENT_VERSION,
       c: Buffer.from(this.ciphertext).toString('base64'),
       m: {
         i: Buffer.from(this.metadata.iv).toString('base64'),
@@ -60,6 +63,11 @@ export class Document {
   static decode(base64: string, encodingProvider = 'base64'): Document {
     const encoding = EncodingFactory.getProvider(encodingProvider);
     const data = JSON.parse(encoding.atob(base64));
+
+    if (data.v !== DOCUMENT_VERSION) {
+      throw new UnsupportedVersionError(data.v, DOCUMENT_VERSION);
+    }
+
     return new Document(
       new Uint8Array(Uint8Array.from(Buffer.from(data.c, 'base64'))),
       {

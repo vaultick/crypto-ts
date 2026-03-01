@@ -1,10 +1,12 @@
-import { InvalidKeyError, InvalidThresholdError, InsufficientSharesError, EmptyPasswordsError, EmptyKeyError } from './errors';
+import { InvalidKeyError, InvalidThresholdError, InsufficientSharesError, EmptyPasswordsError, EmptyKeyError, UnsupportedVersionError } from './errors';
 import { Argon2Provider } from './hashing/argon2';
 import { SharingFactory } from './sharing/sharing';
 import { EncryptionFactory } from './encryption/encryption';
 import { HashingProvider, HashingFactory } from './hashing/hashing';
 import { EncodingFactory } from './encoding/encoding';
 import { RandomnessFactory } from './randomness/randomness';
+
+const KEY_VERSION = 1;
 
 export interface KeyProtector {
   salt: Uint8Array;
@@ -126,6 +128,7 @@ export class EncryptedKey {
   encode(encodingProvider = 'base64'): string {
     const encoding = EncodingFactory.getProvider(encodingProvider);
     const data = {
+      v: KEY_VERSION,
       t: this.threshold,
       e: this.encryptionProvider,
       s: this.sharingProvider,
@@ -142,6 +145,11 @@ export class EncryptedKey {
   static decode(base64: string, encodingProvider = 'base64'): EncryptedKey {
     const encoding = EncodingFactory.getProvider(encodingProvider);
     const data = JSON.parse(encoding.atob(base64));
+
+    if (data.v !== KEY_VERSION) {
+      throw new UnsupportedVersionError(data.v, KEY_VERSION);
+    }
+
     const protectors: KeyProtector[] = data.p.map((p: any) => ({
       salt: new Uint8Array(Uint8Array.from(Buffer.from(p.s, 'base64'))),
       iv: new Uint8Array(Uint8Array.from(Buffer.from(p.i, 'base64'))),
