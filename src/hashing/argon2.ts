@@ -1,4 +1,5 @@
 import { argon2id } from 'hash-wasm';
+import { HashingProvider, HashingFactory } from './hashing';
 
 export interface Argon2Options {
   salt: Uint8Array;
@@ -8,7 +9,7 @@ export interface Argon2Options {
   hashLength?: number; // in bytes
 }
 
-export const DEFAULT_ARGON2_OPTIONS = {
+const DEFAULT_ARGON2_OPTIONS = {
   parallelism: 1,
   iterations: 2,
   memorySize: 65536, // 64 MB
@@ -42,3 +43,21 @@ export async function deriveKey(
 
   return hash;
 }
+
+/**
+ * Argon2id implementation of HashingProvider.
+ */
+export class Argon2Provider implements HashingProvider {
+  readonly name = 'argon2id';
+  constructor(private options: Partial<Argon2Options> = {}) {}
+
+  async derive(password: string, salt: Uint8Array): Promise<Uint8Array> {
+    return await deriveKey(password, { ...this.options, salt });
+  }
+
+  getParams(): Record<string, unknown> {
+    return { ...DEFAULT_ARGON2_OPTIONS, ...this.options };
+  }
+}
+
+HashingFactory.addProvider(new Argon2Provider());

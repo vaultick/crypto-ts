@@ -1,0 +1,143 @@
+import { Argon2Provider } from './hashing/argon2';
+import { SharingFactory } from './sharing/sharing';
+import { EncryptionFactory } from './encryption/encryption';
+import { HashingProvider, HashingFactory } from './hashing/hashing';
+import { EncodingFactory } from './encoding/encoding';
+import { RandomnessFactory } from './randomness/randomness';
+
+export interface KeyProtector {
+  salt: Uint8Array;
+  iv: Uint8Array;
+  ciphertext: Uint8Array;
+  hashingAlgorithm: string;
+}
+
+export class Key {
+  constructor(public readonly material: Uint8Array) {
+    if (material.length !== 32) {
+      throw new Error('Key must be 256 bits (32 bytes)');
+    }
+  }
+
+  static generate(randomnessProvider = 'native'): Key {
+    const randomness = RandomnessFactory.getProvider(randomnessProvider);
+    return new Key(randomness.generate(32));
+  }
+
+  async encrypt(
+    passwords: string[], 
+    threshold: number, 
+    options: {
+      hashingProvider?: string;
+      sharingProvider?: string;
+      encryptionProvider?: string;
+      randomnessProvider?: string;
+    } = {}
+  ): Promise<EncryptedKey> {
+    const n = passwords.length;
+    if (threshold > n) throw new Error('Threshold cannot be greater than number of passwords');
+
+    const sharing = SharingFactory.getProvider(options.sharingProvider || 'shamir');
+    const encryption = EncryptionFactory.getProvider(options.encryptionProvider || 'aes-gcm');
+    const randomness = RandomnessFactory.getProvider(options.randomnessProvider || 'native');
+    const hashing = HashingFactory.getProvider(options.hashingProvider || 'argon2id');
+
+    let shares: Uint8Array[];
+    if (n === 1) {
+      shares = [this.material];
+    } else {
+      shares = await sharing.split(this.material, n, threshold);
+    }
+
+    const protectors: KeyProtector[] = [];
+
+    for (let i = 0; i < n; i++) {
+      const salt = randomness.generate(16);
+      const iv = randomness.generate(12);
+      const passwordKey = await hashing.derive(passwords[i], salt);
+      const ciphertext = await encryption.encrypt(shares[i], passwordKey, iv);
+      
+      protectors.push({
+        salt,
+        iv,
+        ciphertext,
+        hashingAlgorithm: hashing.name
+      });
+    }
+
+    return new EncryptedKey(
+      protectors, 
+      threshold, 
+      encryption.name, 
+      sharing.name
+    );
+  }
+}
+
+export class EncryptedKey {
+  constructor(
+    public readonly protectors: KeyProtector[],
+    public readonly threshold: number,
+    public readonly encryptionProvider: string,
+    public readonly sharingProvider: string
+  ) {}
+
+  async decrypt(
+    passwords: string[] 
+  ): Promise<Key> {
+    const shares: Uint8Array[] = [];
+    const encryption = EncryptionFactory.getProvider(this.encryptionProvider);
+    const sharing = SharingFactory.getProvider(this.sharingProvider);
+
+    // Attempt to unlock protectors using the provided passwords
+    for (const password of passwords) {
+      for (const protector of this.protectors) {
+        try {
+          const hashing = HashingFactory.getProvider(protector.hashingAlgorithm);
+          const passwordKey = await hashing.derive(password, protector.salt);
+          const share = await encryption.decrypt(protector.ciphertext, passwordKey, protector.iv);
+          shares.push(share);
+          break; // This password unlocked a share
+        } catch (e) {
+          continue; // Try next protector
+        }
+      }
+      if (shares.length >= this.threshold) break;
+    }
+
+    if (shares.length < this.threshold) {
+      throw new Error(`Insufficient correct passwords: unlocked ${shares.length}/${this.threshold} required shares.`);
+    }
+
+    const material = this.threshold === 1 ? shares[0] : await sharing.combine(shares);
+    return new Key(material);
+  }
+
+  encode(encodingProvider = 'base64'): string {
+    const encoding = EncodingFactory.getProvider(encodingProvider);
+    const data = {
+      t: this.threshold,
+      e: this.encryptionProvider,
+      s: this.sharingProvider,
+      p: this.protectors.map(p => ({
+        s: Buffer.from(p.salt).toString('base64'),
+        i: Buffer.from(p.iv).toString('base64'),
+        c: Buffer.from(p.ciphertext).toString('base64'),
+        a: p.hashingAlgorithm
+      }))
+    };
+    return encoding.btoa(JSON.stringify(data));
+  }
+
+  static decode(base64: string, encodingProvider = 'base64'): EncryptedKey {
+    const encoding = EncodingFactory.getProvider(encodingProvider);
+    const data = JSON.parse(encoding.atob(base64));
+    const protectors: KeyProtector[] = data.p.map((p: any) => ({
+      salt: new Uint8Array(Uint8Array.from(Buffer.from(p.s, 'base64'))),
+      iv: new Uint8Array(Uint8Array.from(Buffer.from(p.i, 'base64'))),
+      ciphertext: new Uint8Array(Uint8Array.from(Buffer.from(p.c, 'base64'))),
+      hashingAlgorithm: p.a
+    }));
+    return new EncryptedKey(protectors, data.t, data.e, data.s);
+  }
+}
