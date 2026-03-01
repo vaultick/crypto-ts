@@ -3,6 +3,10 @@ import { EncryptionProvider, EncryptionFactory } from './encryption';
 export class AESGCMProvider implements EncryptionProvider {
   readonly name = 'aes-gcm';
   private getSubtleCrypto(): SubtleCrypto {
+    if (typeof globalThis !== 'undefined' && 'isSecureContext' in globalThis && !globalThis.isSecureContext) {
+      throw new Error('Web Crypto API is only available in Secure Contexts (HTTPS or localhost).');
+    }
+
     if (typeof window !== 'undefined' && window.crypto) {
       return window.crypto.subtle;
     }
