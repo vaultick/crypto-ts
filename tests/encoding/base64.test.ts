@@ -17,15 +17,27 @@ describe('Base64Engine', () => {
   });
 
   it('should handle special characters', () => {
-    const input = '✓ à la mode';
-    // btoa/atob in browser handles these differently than Buffer in node
-    // for strings that are not "binary" (latin1)
-    // The implementation uses Buffer.from(str, 'binary') in node
-    // and window.btoa(str) in browser which also expects latin1.
-    // If we want to support UTF-8, we usually encode to UTF-8 bytes first.
-    // Let's test with something that is latin1 first.
     const input2 = 'Hello! @#%^&*()';
     const b64 = engine.btoa(input2);
     expect(engine.atob(b64)).toBe(input2);
+  });
+
+  it('should encode Uint8Array to base64', () => {
+    const data = new Uint8Array([72, 101, 108, 108, 111]); // "Hello"
+    const output = engine.encode(data);
+    expect(output).toBe('SGVsbG8=');
+  });
+
+  it('should decode base64 to Uint8Array', () => {
+    const input = 'SGVsbG8=';
+    const output = engine.decode(input);
+    expect(output).toEqual(new Uint8Array([72, 101, 108, 108, 111]));
+  });
+
+  it('should round-trip binary data', () => {
+    const data = new Uint8Array([0, 1, 2, 253, 254, 255]);
+    const b64 = engine.encode(data);
+    const decoded = engine.decode(b64);
+    expect(decoded).toEqual(data);
   });
 });

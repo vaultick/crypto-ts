@@ -36,4 +36,17 @@ describe('Document', () => {
     const key = Key.generate();
     await expect(Document.encrypt(new Uint8Array(0), key)).rejects.toThrow();
   });
+
+  it('should throw UnsupportedVersionError for incorrect version in decode', () => {
+    const data = {
+      v: 99, // Unsupported version
+      c: 'Y2lwaGVydGV4dA==',
+      m: {
+        i: 'aXY=',
+        a: 'aes-gcm',
+      },
+    };
+    const encoded = btoa(JSON.stringify(data));
+    expect(() => Document.decode(encoded)).toThrow();
+  });
 });

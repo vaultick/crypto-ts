@@ -27,6 +27,35 @@ describe('Argon2WorkerProvider', () => {
     expect(key).toBeInstanceOf(Uint8Array);
     expect(key.length).toBe(32);
     
+    expect(provider.getParams().iterations).toBe(options.iterations);
+    
     provider.terminate();
+  });
+
+  it('should handle worker errors', { skip: typeof window === 'undefined' }, async () => {
+    // Mock worker that returns an error
+    const mockWorker = {
+      postMessage: function(data: any) {
+        setTimeout(() => {
+          if (this.onmessage) {
+            this.onmessage({
+              data: {
+                id: data.id,
+                error: 'Mock Worker Error'
+              }
+            } as MessageEvent);
+          }
+        }, 10);
+      },
+      terminate: () => {},
+      onmessage: null as ((e: MessageEvent) => void) | null
+    };
+    
+    const workerFactory = () => mockWorker as unknown as Worker;
+    const provider = new Argon2WorkerProvider(workerFactory);
+    const randomness = new NativeProvider();
+    const salt = randomness.generate(16);
+
+    await expect(provider.derive('password', salt)).rejects.toThrow('Mock Worker Error');
   });
 });

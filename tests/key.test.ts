@@ -79,4 +79,42 @@ describe('Key', () => {
     const decryptedKey = await decoded.decrypt(['password']);
     expect(decryptedKey.material).toEqual(key.material);
   });
+
+  it('should throw EmptyKeyError for empty material', () => {
+    expect(() => new Key(new Uint8Array(0))).toThrow();
+  });
+
+  it('should throw InvalidKeyError for incorrect material length', () => {
+    expect(() => new Key(new Uint8Array(31))).toThrow();
+    expect(() => new Key(new Uint8Array(33))).toThrow();
+  });
+
+  it('should throw UnsupportedVersionError for incorrect version in decode', () => {
+    const data = {
+      v: 99, // Unsupported version
+      t: 1,
+      e: 'aes-gcm',
+      s: 'shamir',
+      p: [],
+    };
+    const encoded = btoa(JSON.stringify(data));
+    expect(() => EncryptedKey.decode(encoded)).toThrow();
+  });
+
+  it('should throw EmptyPasswordsError for empty passwords in encrypt', async () => {
+    const key = Key.generate();
+    await expect(key.encrypt([], 1)).rejects.toThrow();
+  });
+
+  it('should throw InvalidThresholdError for invalid threshold', async () => {
+    const key = Key.generate();
+    await expect(key.encrypt(['p1'], 2)).rejects.toThrow();
+    await expect(key.encrypt(['p1'], 0)).rejects.toThrow();
+  });
+
+  it('should throw EmptyPasswordsError for empty passwords in decrypt', async () => {
+    const key = Key.generate();
+    const encryptedKey = await key.encrypt(['p1'], 1);
+    await expect(encryptedKey.decrypt([])).rejects.toThrow();
+  });
 });

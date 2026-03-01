@@ -48,4 +48,12 @@ describe('Argon2Provider', () => {
     const key2 = await provider.derive(password, salt2);
     expect(key1).not.toEqual(key2);
   });
+
+  it('should return configured parameters', () => {
+    const params = provider.getParams();
+    expect(params.iterations).toBe(options.iterations);
+    expect(params.memorySize).toBe(options.memorySize);
+    expect(params.parallelism).toBe(options.parallelism);
+    expect(params.hashLength).toBe(options.hashLength);
+  });
 });
