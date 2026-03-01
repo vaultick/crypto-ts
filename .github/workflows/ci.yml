@@ -1,0 +1,160 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint:
+    name: Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+      - run: npm ci
+      - name: Run Lint
+        id: lint
+        run: |
+          if npm run lint > lint-output.txt 2>&1; then
+            echo "FAILED=false" >> $GITHUB_OUTPUT
+          else
+            echo "FAILED=true" >> $GITHUB_OUTPUT
+          fi
+          cat lint-output.txt
+      - name: Add Lint to Summary
+        run: |
+          echo "## Linting Results" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.lint.outputs.FAILED }}" == "true" ]; then
+            echo "❌ **Linting failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Details" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat lint-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ **Linting passed successfully!**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+      - name: Run Audit
+        id: audit
+        run: |
+          if npm audit --audit-level=high > audit-output.txt 2>&1; then
+            echo "FAILED=false" >> $GITHUB_OUTPUT
+          else
+            echo "FAILED=true" >> $GITHUB_OUTPUT
+          fi
+          cat audit-output.txt
+      - name: Add Audit to Summary
+        run: |
+          echo "## Security Audit Results" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.audit.outputs.FAILED }}" == "true" ]; then
+            echo "❌ **Security vulnerabilities found (high or above)**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Details" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat audit-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ **No high-level security vulnerabilities found.**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+
+  test-node:
+    name: Node ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [16, 18, 20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - run: npm ci
+      - name: Run Node Tests
+        id: tests
+        run: |
+          # Use --reporter=github-actions for annotations and --reporter=default for logs
+          if npm run test:node -- --reporter=default --reporter=github-actions > test-output.txt 2>&1; then
+            echo "FAILED=false" >> $GITHUB_OUTPUT
+          else
+            echo "FAILED=true" >> $GITHUB_OUTPUT
+          fi
+          cat test-output.txt
+      - name: Add Node Tests to Summary
+        run: |
+          echo "## Node ${{ matrix.node-version }} Test Results" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.tests.outputs.FAILED }}" == "true" ]; then
+            echo "❌ **Node ${{ matrix.node-version }} tests failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Details" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 50 test-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ **Node ${{ matrix.node-version }} tests passed!**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  test-browser:
+    name: Browser ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+      - run: npm ci
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Run Browser Tests
+        id: tests
+        run: |
+          # Override the browser name from the matrix
+          if npm run test -- --browser.name=${{ matrix.browser }} --reporter=default --reporter=github-actions > test-output.txt 2>&1; then
+            echo "FAILED=false" >> $GITHUB_OUTPUT
+          else
+            echo "FAILED=true" >> $GITHUB_OUTPUT
+          fi
+          cat test-output.txt
+      - name: Add Browser Tests to Summary
+        run: |
+          echo "## Browser ${{ matrix.browser }} Test Results" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.tests.outputs.FAILED }}" == "true" ]; then
+            echo "❌ **Browser ${{ matrix.browser }} tests failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Details" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 50 test-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ **Browser ${{ matrix.browser }} tests passed!**" >> $GITHUB_STEP_SUMMARY
+          fi
