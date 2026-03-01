@@ -1,5 +1,5 @@
 {
-  "name": "@vaultick/ts-crypto",
+  "name": "@vaultick/crypto",
   "version": "1.0.0",
   "description": "A browser-compatible TypeScript library for AES-GCM encryption, Argon2id key derivation, and Shamir's Secret Sharing.",
   "main": "./dist/index.js",

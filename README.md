@@ -1,4 +1,4 @@
-# @vaultick/ts-crypto
+# @vaultick/crypto
 
 A browser-compatible TypeScript library for advanced cryptographic operations.
 
@@ -12,7 +12,7 @@ A browser-compatible TypeScript library for advanced cryptographic operations.
 ## Installation
 
 ```bash
-npm install @vaultick/ts-crypto
+npm install @vaultick/crypto
 ```
 
 ## Usage
@@ -20,7 +20,7 @@ npm install @vaultick/ts-crypto
 ### Password to Key (Argon2id)
 
 ```typescript
-import { deriveKey, generateRandomBytes } from '@vaultick/ts-crypto';
+import { deriveKey, generateRandomBytes } from '@vaultick/crypto';
 
 const password = 'my-secure-password';
 const salt = generateRandomBytes(16);
@@ -30,7 +30,7 @@ const kek = await deriveKey(password, { salt });
 ### Key Sharing (M-of-N)
 
 ```typescript
-import { splitKey, combineShares } from '@vaultick/ts-crypto';
+import { splitKey, combineShares } from '@vaultick/crypto';
 
 const shares = await splitKey(kek, 5, 3); // 5 shares total, 3 required
 const recoveredKEK = await combineShares([shares[0], shares[2], shares[4]]);
@@ -39,7 +39,7 @@ const recoveredKEK = await combineShares([shares[0], shares[2], shares[4]]);
 ### File Encryption (DEK/KEK)
 
 ```typescript
-import { encryptWithDEK, decryptWithDEK } from '@vaultick/ts-crypto';
+import { encryptWithDEK, decryptWithDEK } from '@vaultick/crypto';
 
 const data = new TextEncoder().encode('Sensitive content');
 const { ciphertext, wrappedDEK, dataIV, dekIV } = await encryptWithDEK(data, kek);
