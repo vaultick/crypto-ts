@@ -1,0 +1,54 @@
+{
+  "name": "@vaultick/ts-crypto",
+  "version": "1.0.0",
+  "description": "A browser-compatible TypeScript library for AES-GCM encryption, Argon2id key derivation, and Shamir's Secret Sharing.",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "dev": "tsup --watch",
+    "lint": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vaultick/ts-crypto.git"
+  },
+  "keywords": [
+    "crypto",
+    "aes-gcm",
+    "argon2id",
+    "shamir-secret-sharing",
+    "dek-kek",
+    "browser",
+    "typescript"
+  ],
+  "author": "Vaultick",
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/vaultick/ts-crypto/issues"
+  },
+  "homepage": "https://github.com/vaultick/ts-crypto#readme",
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "hash-wasm": "^4.12.0",
+    "shamir-secret-sharing": "^0.0.4"
+  }
+}
