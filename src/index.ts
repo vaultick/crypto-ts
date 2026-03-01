@@ -4,6 +4,7 @@ export * from './encryption/encryption';
 export * from './encryption/aes-gcm';
 export * from './hashing/hashing';
 export * from './hashing/argon2';
+export * from './hashing/argon2-worker-provider';
 export * from './randomness/randomness';
 export * from './randomness/native';
 export * from './sharing/sharing';
