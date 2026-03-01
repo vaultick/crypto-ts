@@ -5,6 +5,7 @@ import { RandomnessFactory } from './randomness/randomness';
 import { EmptyDataError, UnsupportedVersionError } from './errors';
 
 const DOCUMENT_VERSION = 1;
+export const DOCUMENT_IV_LENGTH = 12;
 
 export interface DocumentMetadata {
   iv: Uint8Array;
@@ -31,7 +32,7 @@ export class Document {
     const encryption = EncryptionFactory.getProvider(options.encryptionProvider || 'aes-gcm');
     const randomness = RandomnessFactory.getProvider(options.randomnessProvider || 'native');
     
-    const iv = randomness.generate(12);
+    const iv = randomness.generate(DOCUMENT_IV_LENGTH);
     const ciphertext = await encryption.encrypt(data, key.material, iv);
     
     return new Document(ciphertext, {

@@ -6,6 +6,10 @@ import { HashingProvider, HashingFactory } from './hashing/hashing';
 import { EncodingFactory } from './encoding/encoding';
 import { RandomnessFactory } from './randomness/randomness';
 
+export const KEY_MATERIAL_LENGTH = 32;
+export const KEY_PROTECTOR_SALT_LENGTH = 16;
+export const KEY_PROTECTOR_IV_LENGTH = 12;
+
 const KEY_VERSION = 1;
 
 export interface KeyProtector {
@@ -20,14 +24,14 @@ export class Key {
     if (material.length === 0) {
       throw new EmptyKeyError();
     }
-    if (material.length !== 32) {
+    if (material.length !== KEY_MATERIAL_LENGTH) {
       throw new InvalidKeyError();
     }
   }
 
   static generate(randomnessProvider = 'native'): Key {
     const randomness = RandomnessFactory.getProvider(randomnessProvider);
-    return new Key(randomness.generate(32));
+    return new Key(randomness.generate(KEY_MATERIAL_LENGTH));
   }
 
   async encrypt(
@@ -61,8 +65,8 @@ export class Key {
     const protectors: KeyProtector[] = [];
 
     for (let i = 0; i < n; i++) {
-      const salt = randomness.generate(16);
-      const iv = randomness.generate(12);
+      const salt = randomness.generate(KEY_PROTECTOR_SALT_LENGTH);
+      const iv = randomness.generate(KEY_PROTECTOR_IV_LENGTH);
       const passwordKey = await hashing.derive(passwords[i], salt);
       const ciphertext = await encryption.encrypt(shares[i], passwordKey, iv);
       
