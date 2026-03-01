@@ -4,11 +4,10 @@ A browser-compatible TypeScript library for advanced cryptographic operations.
 
 ## Features
 
-- **Key & Document Architecture**: Industrial-grade separation of credentials, key management, and data storage.
-- **M-of-N Key Protection**: Split your Master Key into shares protected by multiple passwords.
-- **Generic Hashing**: Pluggable hashing providers (Argon2id by default).
-- **Exportable Blobs**: Keys and Documents are easily exportable to Base64 for API use.
-- **AES-GCM Encryption**: Secure data encryption using the Web Crypto API.
+- **Modern Cryptography**: Built on industry-standard AES-GCM (256-bit) and Argon2id.
+- **Multi-Password Protection**: Secure your keys with an M-of-N password scheme using Shamir's Secret Sharing.
+- **Browser & Node.js Compatible**: Seamlessly works in modern browsers (via Web Crypto API) and Node.js environments.
+- **High-Performance Hashing**: Argon2id implementation via WebAssembly (`hash-wasm`) for strong key derivation.
 
 ## Installation
 
@@ -16,66 +15,46 @@ A browser-compatible TypeScript library for advanced cryptographic operations.
 npm install @vaultick/crypto
 ```
 
-## Usage
+## Quick Start
 
-### 1. The Key (In-Memory Only)
+The core workflow involves creating a master `Key`, protecting it with one or more passwords to get an `EncryptedKey`, and using the `Key` to encrypt data into a `Document`.
 
-A `Key` represents a derived secret. It should never be persisted directly.
-
-```typescript
-import { Key, Argon2Provider, generateRandomBytes } from '@vaultick/crypto';
-
-// Generate a new random master key
-const key = Key.generate();
-```
-
-### 2. Encrypting the Key (For Persistence)
-
-You "encrypt" a `Key` with one or more passwords to persist it safely.
-
-#### Single Password Protection
-```typescript
-const encryptedKey = await key.encrypt(['my-password'], 1);
-const keyBlob = encryptedKey.encode(); // Save this Base64 string
-```
-
-#### M-of-N Protection (e.g., 2-of-3)
-```typescript
-const encryptedKey = await key.encrypt(['p1', 'p2', 'p3'], 2);
-```
-
-### 3. The Document (Data Storage)
-
-A `Document` contains your encrypted data. It uses an unlocked `Key` to perform the encryption.
+### Encrypting Data
 
 ```typescript
-import { Document } from '@vaultick/crypto';
+import { Key, Document } from '@vaultick/crypto';
 
-const data = new TextEncoder().encode('My secret file content');
-const document = await Document.encrypt(data, key);
-const documentBlob = document.encode(); // Save this Base64 string
+// 1. Generate a new random 256-bit master key
+const masterKey = Key.generate();
+
+// 2. Protect the key with passwords (M-of-N)
+// In this example, we require any 2 out of 3 passwords to unlock the key
+const passwords = ['p4ssw0rd1', 'secret-phrase', 'another-pass'];
+const threshold = 2;
+const encryptedKey = await masterKey.encrypt(passwords, threshold);
+
+// 3. Encrypt sensitive data
+const data = new TextEncoder().encode('Hello, Vaultick!');
+const encryptedDocument = await Document.encrypt(data, masterKey);
+
+// 4. Serialize for storage or transmission
+const serializedKey = encryptedKey.encode();
+const serializedDoc = encryptedDocument.encode();
 ```
 
-### 4. Recovery (Decryption)
+### Decrypting Data
 
 ```typescript
-import { Key, EncryptedKey, Document } from '@vaultick/crypto';
+import { EncryptedKey, Document } from '@vaultick/crypto';
 
-// 1. Import and decrypt the Key
-const ek = EncryptedKey.decode(storedKeyBlob);
-const key = await ek.decrypt(['my-password']);
+// 1. Restore objects from serialized strings
+const restoredKey = EncryptedKey.decode(serializedKey);
+const restoredDoc = Document.decode(serializedDoc);
 
-// 2. Import and decrypt the Document
-const document = Document.decode(storedDocumentBlob);
-const decrypted = await document.decrypt(key);
+// 2. Unlock the master key using the required number of passwords
+const unlockedKey = await restoredKey.decrypt(['p4ssw0rd1', 'another-pass']);
+
+// 3. Decrypt the document content
+const decryptedData = await restoredDoc.decrypt(unlockedKey);
+console.log(new TextDecoder().decode(decryptedData)); // "Hello, Vaultick!"
 ```
-
-## Development
-
-- `npm run build`: Build the library.
-- `npm run test`: Run tests using Vitest.
-- `npm run lint`: Check for type errors.
-
-## License
-
-Apache-2.0
