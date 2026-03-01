@@ -1,14 +1,26 @@
 import { argon2id } from 'hash-wasm';
 import { HashingProvider, HashingFactory } from './hashing';
 
+/**
+ * Options for configuring the Argon2id key derivation algorithm.
+ * Argon2id is highly resistant to GPU-based side-channel and cracking attacks.
+ */
 export interface Argon2Options {
+  /** A unique random buffer used to prevent pre-computation attacks. */
   salt: Uint8Array;
+  /** Number of execution threads. Higher values increase cost for attackers. */
   parallelism?: number;
+  /** Number of passes over the memory. Higher values increase time cost. */
   iterations?: number;
-  memorySize?: number; // in KiB
-  hashLength?: number; // in bytes
+  /** Amount of memory to use (in KiB). Higher values increase memory cost. */
+  memorySize?: number;
+  /** The length of the resulting hash (in bytes). 32 is the standard for 256-bit keys. */
+  hashLength?: number;
 }
 
+/**
+ * The default recommended parameters for Argon2id.
+ */
 const DEFAULT_ARGON2_OPTIONS = {
   parallelism: 1,
   iterations: 2,
@@ -17,10 +29,11 @@ const DEFAULT_ARGON2_OPTIONS = {
 };
 
 /**
- * Derives a key from a password using Argon2id.
- * @param password The user password.
- * @param options Argon2id parameters and salt.
- * @returns The derived key as a Uint8Array.
+ * Low-level helper to derive a key using the Argon2id WebAssembly implementation.
+ *
+ * @param password - The user password.
+ * @param options - Argon2id parameters and salt.
+ * @returns A promise that resolves to the derived key as a Uint8Array.
  */
 export async function deriveKey(password: string, options: Argon2Options): Promise<Uint8Array> {
   const params = {
@@ -42,19 +55,35 @@ export async function deriveKey(password: string, options: Argon2Options): Promi
 }
 
 /**
- * Argon2id implementation of HashingProvider.
+ * An implementation of HashingProvider using the Argon2id algorithm.
+ * This implementation runs on the main thread.
  */
 export class Argon2Provider implements HashingProvider {
+  /** The unique identifier for this provider. */
   readonly name = 'argon2id';
+
+  /**
+   * @param options - Optional custom parameters for Argon2id.
+   */
   constructor(private options: Partial<Argon2Options> = {}) {}
 
+  /**
+   * Derives a 256-bit key from a password.
+   * @param password - The user-provided password.
+   * @param salt - The cryptographic salt.
+   * @returns A promise resolving to the derived key.
+   */
   async derive(password: string, salt: Uint8Array): Promise<Uint8Array> {
     return await deriveKey(password, { ...this.options, salt });
   }
 
+  /**
+   * Returns the current Argon2id configuration.
+   */
   getParams(): Record<string, unknown> {
     return { ...DEFAULT_ARGON2_OPTIONS, ...this.options };
   }
 }
 
+// Automatically register the provider upon module import.
 HashingFactory.addProvider(new Argon2Provider());

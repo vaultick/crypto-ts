@@ -1,8 +1,21 @@
 import { RandomnessProvider, RandomnessFactory } from './randomness';
 import { SecureContextError } from '../errors';
 
+/**
+ * An implementation of RandomnessProvider using the environment's native CSPRNG.
+ * In browsers, this uses `crypto.getRandomValues()`. In Node.js, it uses the `crypto` module.
+ */
 export class NativeProvider implements RandomnessProvider {
+  /** The unique identifier for this provider. */
   readonly name = 'native';
+
+  /**
+   * Generates cryptographically secure random bytes.
+   *
+   * @param length - The number of bytes to generate.
+   * @returns A Uint8Array of random bytes.
+   * @throws {SecureContextError} If the environment is an insecure browser context.
+   */
   generate(length: number): Uint8Array {
     if (
       typeof globalThis !== 'undefined' &&
@@ -23,4 +36,5 @@ export class NativeProvider implements RandomnessProvider {
   }
 }
 
+// Automatically register the provider upon module import.
 RandomnessFactory.addProvider(new NativeProvider());
