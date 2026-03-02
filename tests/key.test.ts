@@ -53,14 +53,19 @@ describe('Key', () => {
   });
 
   it('should fail to decrypt with fewer than threshold passwords', async () => {
+    const { InsufficientSharesError } = await import('../src/errors');
     const key = Key.generate();
     const passwords = ['p1', 'p2', 'p3'];
     const threshold = 2;
 
     const encryptedKey = await key.encrypt(passwords, threshold);
 
-    await expect(encryptedKey.decrypt(['p1'])).rejects.toThrow();
-    await expect(encryptedKey.decrypt(['wrong-password'])).rejects.toThrow();
+    // One correct password is not enough for threshold 2
+    await expect(encryptedKey.decrypt(['p1'])).rejects.toThrow(InsufficientSharesError);
+    // Incorrect passwords should also fail
+    await expect(encryptedKey.decrypt(['wrong-password'])).rejects.toThrow(InsufficientSharesError);
+    // Two incorrect passwords should also fail
+    await expect(encryptedKey.decrypt(['wrong1', 'wrong2'])).rejects.toThrow(InsufficientSharesError);
   });
 
   it('should encode and decode EncryptedKey', async () => {
@@ -80,16 +85,19 @@ describe('Key', () => {
     expect(decryptedKey.material).toEqual(key.material);
   });
 
-  it('should throw EmptyKeyError for empty material', () => {
-    expect(() => new Key(new Uint8Array(0))).toThrow();
+  it('should throw EmptyKeyError for empty material', async () => {
+    const { EmptyKeyError } = await import('../src/errors');
+    expect(() => new Key(new Uint8Array(0))).toThrow(EmptyKeyError);
   });
 
-  it('should throw InvalidKeyError for incorrect material length', () => {
-    expect(() => new Key(new Uint8Array(31))).toThrow();
-    expect(() => new Key(new Uint8Array(33))).toThrow();
+  it('should throw InvalidKeyError for incorrect material length', async () => {
+    const { InvalidKeyError } = await import('../src/errors');
+    expect(() => new Key(new Uint8Array(31))).toThrow(InvalidKeyError);
+    expect(() => new Key(new Uint8Array(33))).toThrow(InvalidKeyError);
   });
 
-  it('should throw UnsupportedVersionError for incorrect version in decode', () => {
+  it('should throw UnsupportedVersionError for incorrect version in decode', async () => {
+    const { UnsupportedVersionError } = await import('../src/errors');
     const data = {
       v: 99, // Unsupported version
       t: 1,
@@ -98,23 +106,26 @@ describe('Key', () => {
       p: [],
     };
     const encoded = btoa(JSON.stringify(data));
-    expect(() => EncryptedKey.decode(encoded)).toThrow();
+    expect(() => EncryptedKey.decode(encoded)).toThrow(UnsupportedVersionError);
   });
 
   it('should throw EmptyPasswordsError for empty passwords in encrypt', async () => {
+    const { EmptyPasswordsError } = await import('../src/errors');
     const key = Key.generate();
-    await expect(key.encrypt([], 1)).rejects.toThrow();
+    await expect(key.encrypt([], 1)).rejects.toThrow(EmptyPasswordsError);
   });
 
   it('should throw InvalidThresholdError for invalid threshold', async () => {
+    const { InvalidThresholdError } = await import('../src/errors');
     const key = Key.generate();
-    await expect(key.encrypt(['p1'], 2)).rejects.toThrow();
-    await expect(key.encrypt(['p1'], 0)).rejects.toThrow();
+    await expect(key.encrypt(['p1'], 2)).rejects.toThrow(InvalidThresholdError);
+    await expect(key.encrypt(['p1'], 0)).rejects.toThrow(InvalidThresholdError);
   });
 
   it('should throw EmptyPasswordsError for empty passwords in decrypt', async () => {
+    const { EmptyPasswordsError } = await import('../src/errors');
     const key = Key.generate();
     const encryptedKey = await key.encrypt(['p1'], 1);
-    await expect(encryptedKey.decrypt([])).rejects.toThrow();
+    await expect(encryptedKey.decrypt([])).rejects.toThrow(EmptyPasswordsError);
   });
 });

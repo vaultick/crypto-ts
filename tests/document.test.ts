@@ -32,12 +32,14 @@ describe('Document', () => {
     expect(decrypted).toEqual(data);
   });
 
-  it('should throw error for empty data', async () => {
+  it('should throw EmptyDataError for empty data', async () => {
+    const { EmptyDataError } = await import('../src/errors');
     const key = Key.generate();
-    await expect(Document.encrypt(new Uint8Array(0), key)).rejects.toThrow();
+    await expect(Document.encrypt(new Uint8Array(0), key)).rejects.toThrow(EmptyDataError);
   });
 
-  it('should throw UnsupportedVersionError for incorrect version in decode', () => {
+  it('should throw UnsupportedVersionError for incorrect version in decode', async () => {
+    const { UnsupportedVersionError } = await import('../src/errors');
     const data = {
       v: 99, // Unsupported version
       c: 'Y2lwaGVydGV4dA==',
@@ -47,6 +49,6 @@ describe('Document', () => {
       },
     };
     const encoded = btoa(JSON.stringify(data));
-    expect(() => Document.decode(encoded)).toThrow();
+    expect(() => Document.decode(encoded)).toThrow(UnsupportedVersionError);
   });
 });

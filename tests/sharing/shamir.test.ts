@@ -36,10 +36,11 @@ describe('ShamirProvider', () => {
   });
 
   it('should throw error for invalid split parameters', async () => {
+    const { InvalidThresholdError, InvalidShareCountError, EmptyDataError } = await import('../../src/errors');
     const secret = new TextEncoder().encode('Secret');
     
-    await expect(provider.split(secret, 5, 6)).rejects.toThrow();
-    await expect(provider.split(secret, 0, 0)).rejects.toThrow();
-    await expect(provider.split(new Uint8Array(0), 5, 3)).rejects.toThrow();
+    await expect(provider.split(secret, 5, 6)).rejects.toThrow(InvalidThresholdError);
+    await expect(provider.split(secret, 0, 0)).rejects.toThrow(InvalidShareCountError);
+    await expect(provider.split(new Uint8Array(0), 5, 3)).rejects.toThrow(EmptyDataError);
   });
 });
